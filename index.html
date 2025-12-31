@@ -1,7 +1,28 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Camera Transmit</title>
+<style>
+body {
+  background: #111;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+}
+video {
+  width: 360px;
+  height: 270px;
+  background: black;
+  border-radius: 8px;
+}
+</style>
+</head>
+
 <body>
-<video id="v" autoplay playsinline></video>
+<video id="v" autoplay playsinline muted></video>
 <canvas id="c" width="32" height="32" hidden></canvas>
 
 <script>
@@ -9,22 +30,26 @@ const v = document.getElementById("v")
 const c = document.getElementById("c")
 const x = c.getContext("2d")
 
-navigator.mediaDevices.getUserMedia({video:true})
-.then(s=>v.srcObject=s)
+navigator.mediaDevices.getUserMedia({ video: true })
+.then(stream => {
+  v.srcObject = stream
+  v.play()
+})
+.catch(e => alert("Erro ao acessar câmera"))
 
-setInterval(()=>{
+setInterval(() => {
   x.filter = "contrast(130%) brightness(110%)"
-  x.drawImage(v,0,0,32,32)
+  x.drawImage(v, 0, 0, 32, 32)
   x.filter = "none"
 
-  const img = c.toDataURL("image/jpeg",1.0).split(",")[1]
+  const img = c.toDataURL("image/jpeg", 1.0).split(",")[1]
 
-  fetch("https://camera-voxel-roblox.onrender.com/camera",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({image:img})
+  fetch("https://camera-voxel-roblox.onrender.com/camera", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ image: img })
   })
-},2000)
+}, 2000)
 </script>
 </body>
 </html>
