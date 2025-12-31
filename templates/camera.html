@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Camera</title>
+<style>
+body {
+  background:black;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+  margin:0;
+}
+video {
+  width:320px;
+  height:240px;
+}
+</style>
+</head>
+<body>
+
+<video id="v" autoplay playsinline muted></video>
+<canvas id="c" width="32" height="32" hidden></canvas>
+
+<script>
+const v = document.getElementById("v")
+const c = document.getElementById("c")
+const ctx = c.getContext("2d")
+
+navigator.mediaDevices.getUserMedia({video:true})
+.then(s => {
+  v.srcObject = s
+  v.play()
+})
+.catch(e => alert(e))
+
+setInterval(() => {
+  ctx.drawImage(v, 0, 0, 32, 32)
+  const img = c.toDataURL("image/jpeg").split(",")[1]
+
+  fetch("/camera", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({image: img})
+  })
+  .then(r => r.json())
+  .then(j => console.log("POST OK", j))
+  .catch(e => console.error("POST ERRO", e))
+
+}, 2000)
+</script>
+
+</body>
+</html>
