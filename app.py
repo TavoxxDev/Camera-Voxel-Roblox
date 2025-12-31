@@ -21,9 +21,7 @@ def camera():
     img = Image.open(io.BytesIO(img_data)).convert("L")
     img = img.resize((GRID, GRID))
 
-    pixels = bytes(max(20, p) for p in img.getdata())
-    last_frame = pixels
-
+    last_frame = list(img.getdata())
     return jsonify({"ok": True})
 
 @app.route("/cameraGet")
@@ -31,10 +29,8 @@ def camera_get():
     if last_frame is None:
         return jsonify({"ready": False})
 
-    encoded = base64.b64encode(last_frame).decode()
-
     return jsonify({
         "ready": True,
         "size": GRID,
-        "data": encoded
+        "data": last_frame
     })
