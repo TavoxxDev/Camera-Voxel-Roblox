@@ -1,55 +1,54 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Camera Transmit</title>
+<title>Camera</title>
 <style>
 body {
-  background: #111;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  margin: 0;
+  background:black;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
 }
 video {
-  width: 360px;
-  height: 270px;
-  background: black;
-  border-radius: 8px;
+  width:320px;
+  height:240px;
 }
 </style>
 </head>
-
 <body>
+
 <video id="v" autoplay playsinline muted></video>
 <canvas id="c" width="32" height="32" hidden></canvas>
 
 <script>
 const v = document.getElementById("v")
 const c = document.getElementById("c")
-const x = c.getContext("2d")
+const ctx = c.getContext("2d")
 
-navigator.mediaDevices.getUserMedia({ video: true })
-.then(stream => {
-  v.srcObject = stream
+navigator.mediaDevices.getUserMedia({video:true})
+.then(s => {
+  v.srcObject = s
   v.play()
 })
-.catch(e => alert("Erro ao acessar câmera"))
+.catch(e => alert(e))
 
 setInterval(() => {
-  x.filter = "contrast(130%) brightness(110%)"
-  x.drawImage(v, 0, 0, 32, 32)
-  x.filter = "none"
+  ctx.drawImage(v, 0, 0, 32, 32)
+  const img = c.toDataURL("image/jpeg").split(",")[1]
 
-  const img = c.toDataURL("image/jpeg", 1.0).split(",")[1]
-
-  fetch("https://camera-voxel-roblox.onrender.com/camera", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ image: img })
+  fetch("/camera", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({image: img})
   })
+  .then(r => r.json())
+  .then(j => console.log("POST OK", j))
+  .catch(e => console.error("POST ERRO", e))
+
 }, 2000)
 </script>
+
 </body>
 </html>
