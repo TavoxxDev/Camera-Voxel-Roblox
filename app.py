@@ -6,8 +6,8 @@ import base64, io
 app = Flask(__name__)
 CORS(app)
 
-last_frame = None
 GRID = 64
+last_frame = None
 
 @app.route("/")
 def home():
@@ -16,33 +16,25 @@ def home():
 @app.route("/camera", methods=["POST"])
 def camera():
     global last_frame
-    try:
-        print("FRAME RECEBIDO")
-        img_data = base64.b64decode(request.json["image"])
-        img = Image.open(io.BytesIO(img_data)).convert("L")
-        img = img.resize((GRID, GRID))
-        pixels = list(img.getdata())
 
-        fixed = []
-        for v in pixels:
-            if v < 20:
-                v = 20
-            fixed.append(v)
+    img_data = base64.b64decode(request.json["image"])
+    img = Image.open(io.BytesIO(img_data)).convert("L")
+    img = img.resize((GRID, GRID))
 
-        last_frame = fixed
-        return jsonify({"ok": True})
-    except Exception as e:
-        print("ERRO:", e)
-        return jsonify({"error": str(e)}), 400
+    pixels = bytes(max(20, p) for p in img.getdata())
+    last_frame = pixels
+
+    return jsonify({"ok": True})
 
 @app.route("/cameraGet")
 def camera_get():
     if last_frame is None:
         return jsonify({"ready": False})
 
-    data = []
-    for v in last_frame:
-        depth = int((255 - v) / 255 * 20)
-        data.append([v, depth])
+    encoded = base64.b64encode(last_frame).decode()
 
-    return jsonify({"ready": True, "data": data})
+    return jsonify({
+        "ready": True,
+        "size": GRID,
+        "data": encoded
+    })
