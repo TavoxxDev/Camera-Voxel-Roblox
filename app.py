@@ -7,7 +7,7 @@ app = Flask(__name__)
 CORS(app)
 
 last_frame = None
-GRID = 32
+GRID = 64
 
 @app.route("/")
 def home():
