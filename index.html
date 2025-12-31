@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <body>
-<video id="v" autoplay></video>
+<video id="v" autoplay playsinline></video>
 <canvas id="c" width="32" height="32" hidden></canvas>
 
 <script>
@@ -13,10 +13,10 @@ navigator.mediaDevices.getUserMedia({video:true})
 .then(s=>v.srcObject=s)
 
 setInterval(()=>{
-x.filter = "contrast(140%) brightness(110%)"
-x.drawImage(v,0,0,32,32)
-x.filter = "none"
-  const img = c.toDataURL("image/jpeg").split(",")[1]
+  x.filter = "contrast(150%) brightness(120%)"
+  x.drawImage(v,0,0,32,32)
+  x.filter = "none"
+  const img = c.toDataURL("image/jpeg",0.9).split(",")[1]
   fetch("https://camera-voxel-roblox.onrender.com/camera",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
