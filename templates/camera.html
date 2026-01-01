@@ -7,26 +7,61 @@
 body {
   margin:0;
   background:black;
+  color:white;
   display:flex;
-  justify-content:center;
+  flex-direction:column;
   align-items:center;
+  justify-content:center;
   height:100vh;
 }
 video {
-  width:480px;
-  height:auto;
+  width:420px;
+  margin-bottom:10px;
+}
+button {
+  margin:4px;
+  padding:8px 16px;
+  font-size:16px;
+  cursor:pointer;
+}
+.active {
+  background:#00ff88;
+  color:black;
 }
 </style>
 </head>
 <body>
 
 <video id="v" autoplay muted playsinline></video>
+
+<div>
+  <button id="colorBtn" class="active">🎨 Cor</button>
+  <button id="bwBtn">⚫ Preto & Branco</button>
+</div>
+
 <canvas id="c" width="96" height="96" hidden></canvas>
 
 <script>
 const v = document.getElementById("v")
 const c = document.getElementById("c")
 const ctx = c.getContext("2d")
+
+let mode = "color"
+
+const colorBtn = document.getElementById("colorBtn")
+const bwBtn = document.getElementById("bwBtn")
+
+colorBtn.onclick = () => {
+  mode = "color"
+  colorBtn.classList.add("active")
+  bwBtn.classList.remove("active")
+}
+
+bwBtn.onclick = () => {
+  mode = "bw"
+  bwBtn.classList.add("active")
+  colorBtn.classList.remove("active")
+}
 
 navigator.mediaDevices.getUserMedia({ video:true })
 .then(s => {
@@ -39,9 +74,12 @@ setInterval(() => {
   const img = c.toDataURL("image/jpeg", 0.45).split(",")[1]
 
   fetch("/camera", {
-    method: "POST",
-    headers: { "Content-Type":"application/json" },
-    body: JSON.stringify({ image: img })
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({
+      image: img,
+      mode: mode
+    })
   })
 }, 50)
 </script>
