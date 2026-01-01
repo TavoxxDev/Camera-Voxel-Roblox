@@ -6,7 +6,7 @@ import base64, io
 app = Flask(__name__)
 CORS(app)
 
-GRID = 128
+GRID = 96
 last_frame = None
 
 @app.route("/")
@@ -34,3 +34,6 @@ def camera_get():
         "size": GRID,
         "data": last_frame
     })
+
+if __name__ == "__main__":
+    app.run()
