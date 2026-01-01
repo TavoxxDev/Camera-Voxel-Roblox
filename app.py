@@ -7,18 +7,18 @@ app = Flask(__name__)
 CORS(app)
 
 GRID = 96
-TIMEOUT = 3.0
+TIMEOUT = 3
 
 last_frame = None
 last_time = 0
-last_smile = False
 
 FALLBACK = "https://raw.githubusercontent.com/SrBolasGrandes/Camera-Voxel-Roblox/refs/heads/main/262%20Sem%20T%C3%ADtulo_20260101105003.png"
 
 def load_fallback():
     global last_frame
     r = requests.get(FALLBACK)
-    img = Image.open(io.BytesIO(r.content)).convert("RGB").resize((GRID,GRID))
+    img = Image.open(io.BytesIO(r.content)).convert("RGB")
+    img = img.resize((GRID,GRID))
     last_frame = list(img.getdata())
 
 @app.route("/")
@@ -27,13 +27,13 @@ def home():
 
 @app.route("/camera", methods=["POST"])
 def camera():
-    global last_frame,last_time,last_smile
+    global last_frame, last_time
 
     raw = base64.b64decode(request.json["image"])
     mode = request.json.get("mode","color")
-    last_smile = request.json.get("smiling",False)
 
-    img = Image.open(io.BytesIO(raw)).convert("RGB").resize((GRID,GRID))
+    img = Image.open(io.BytesIO(raw)).convert("RGB")
+    img = img.resize((GRID,GRID))
     pixels = list(img.getdata())
 
     if mode == "bw":
@@ -47,14 +47,13 @@ def camera():
 @app.route("/cameraGet")
 def get():
     global last_frame
-    if last_frame is None:
+    if last_frame is None or time.time() - last_time > TIMEOUT:
         load_fallback()
 
     return jsonify(
         ready=True,
         size=GRID,
-        data=last_frame,
-        smiling=last_smile
+        data=last_frame
     )
 
 if __name__ == "__main__":
