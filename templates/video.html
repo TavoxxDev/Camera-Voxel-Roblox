@@ -5,7 +5,7 @@
 <title>Video Voxel</title>
 
 <style>
-body {
+body{
   margin:0;
   background:black;
   color:white;
@@ -16,33 +16,25 @@ body {
   justify-content:center;
   height:100vh;
 }
-
-#list button {
+#list button{
   margin:4px;
   padding:6px 14px;
 }
-
-video {
+video{
   width:320px;
   border:2px solid white;
-  margin-top:10px;
-}
-
-.controls button {
-  margin:6px;
 }
 </style>
 </head>
 <body>
 
-<h3>Vídeos</h3>
 <div id="list">Carregando...</div>
 
 <video id="vid" crossorigin="anonymous"></video>
 
-<div class="controls">
-  <button onclick="vid.play()">▶ Play</button>
-  <button onclick="vid.pause()">⏸ Pause</button>
+<div>
+  <button onclick="vid.play()">Play</button>
+  <button onclick="vid.pause()">Pause</button>
 </div>
 
 <canvas id="c" width="96" height="96" hidden></canvas>
@@ -54,31 +46,36 @@ const ctx = canvas.getContext("2d")
 const list = document.getElementById("list")
 
 fetch("/videosList")
-  .then(r=>r.json())
-  .then(videos=>{
-    list.innerHTML = ""
-    videos.forEach(v=>{
-      const b = document.createElement("button")
-      b.innerText = v.name
-      b.onclick = ()=>{
-        vid.src = v.url
-        vid.play()
-      }
-      list.appendChild(b)
-    })
+.then(r=>r.json())
+.then(videos=>{
+  list.innerHTML=""
+  videos.forEach(v=>{
+    const b=document.createElement("button")
+    b.innerText=v.name
+    b.onclick=()=>{
+      vid.src=v.url
+      vid.play()
+
+      fetch("/setAudio",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          audio:v.url.replace(".mp4",".mp3")
+        })
+      })
+    }
+    list.appendChild(b)
   })
+})
 
 setInterval(()=>{
-  if (vid.paused || vid.ended || vid.videoWidth === 0) return
-
+  if(vid.paused||vid.ended||vid.videoWidth===0)return
   ctx.drawImage(vid,0,0,96,96)
-
   fetch("/camera",{
     method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({
-      image: canvas.toDataURL("image/jpeg",0.5).split(",")[1],
-      source: "video"
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      image:canvas.toDataURL("image/jpeg",0.5).split(",")[1]
     })
   })
 },50)
