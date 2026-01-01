@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Camera Smile</title>
+<title>Camera Voxel</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
@@ -18,31 +18,35 @@ body {
   justify-content:center;
   height:100vh;
 }
-video {
-  width:420px;
+
+#view {
+  width:320px;
+  height:320px;
+  image-rendering: pixelated;
+  border:2px solid white;
 }
+
 button {
   margin-top:10px;
-  padding:6px 14px;
-}
-.smile {
-  color:#00ff88;
-  font-weight:bold;
+  padding:6px 12px;
 }
 </style>
 </head>
 <body>
 
-<video id="video" autoplay muted playsinline></video>
-<div id="status">😐 Sem sorriso</div>
-<button id="modeBtn">Modo: COLORIDO</button>
+<canvas id="view" width="96" height="96"></canvas>
+<div id="status">😐</div>
+<button id="modeBtn">Modo: COLOR</button>
 
-<canvas id="c" width="96" height="96" hidden></canvas>
+<video id="video" autoplay muted playsinline hidden></video>
+<canvas id="send" width="96" height="96" hidden></canvas>
 
 <script>
 const video = document.getElementById("video")
-const canvas = document.getElementById("c")
-const ctx = canvas.getContext("2d")
+const view = document.getElementById("view")
+const vctx = view.getContext("2d")
+const send = document.getElementById("send")
+const sctx = send.getContext("2d")
 const status = document.getElementById("status")
 const modeBtn = document.getElementById("modeBtn")
 
@@ -51,48 +55,41 @@ let mode = "color"
 
 modeBtn.onclick = () => {
   mode = mode === "color" ? "bw" : "color"
-  modeBtn.textContent = "Modo: " + (mode === "color" ? "COLORIDO" : "P&B")
+  modeBtn.innerText = "Modo: " + mode.toUpperCase()
 }
 
 const faceMesh = new FaceMesh({
   locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}`
 })
 
-faceMesh.setOptions({
-  maxNumFaces: 1,
-  refineLandmarks: true
-})
+faceMesh.setOptions({ maxNumFaces:1 })
 
-faceMesh.onResults(results => {
+faceMesh.onResults(r => {
   smiling = false
-
-  if (results.multiFaceLandmarks?.[0]) {
-    const lm = results.multiFaceLandmarks[0]
+  if (r.multiFaceLandmarks?.[0]) {
+    const lm = r.multiFaceLandmarks[0]
     const w = Math.abs(lm[61].x - lm[291].x)
     const o = Math.abs(lm[13].y - lm[14].y)
     if (o > w * 0.25) smiling = true
   }
-
-  status.textContent = smiling ? "😄 SORRINDO" : "😐 Sem sorriso"
-  status.className = smiling ? "smile" : ""
+  status.innerText = smiling ? "😄 SORRINDO" : "😐"
 })
 
-navigator.mediaDevices.getUserMedia({ video:true })
-.then(stream => {
+navigator.mediaDevices.getUserMedia({ video:true }).then(stream => {
   video.srcObject = stream
-  const cam = new Camera(video, {
-    onFrame: async () => {
-      await faceMesh.send({ image: video })
-    }
+  const cam = new Camera(video,{
+    onFrame: async ()=> await faceMesh.send({image:video})
   })
   cam.start()
 })
 
-setInterval(() => {
-  ctx.drawImage(video, 0, 0, 96, 96)
-  const img = canvas.toDataURL("image/jpeg", 0.45).split(",")[1]
+setInterval(()=>{
+  vctx.drawImage(video,0,0,96,96)
+  sctx.drawImage(video,0,0,96,96)
 
-  fetch("/camera", {
+  const img = send.toDataURL("image/jpeg",0.5).split(",")[1]
+
+  fetch("/camera",{
     method:"POST",
     headers:{ "Content-Type":"application/json" },
     body: JSON.stringify({
@@ -101,7 +98,7 @@ setInterval(() => {
       mode: mode
     })
   })
-}, 50)
+},50)
 </script>
 
 </body>
