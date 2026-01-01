@@ -27,7 +27,7 @@ for y = 0, GRID - 1 do
 		f.Size = UDim2.fromOffset(PIXEL, PIXEL)
 		f.Position = UDim2.fromOffset(x * PIXEL, y * PIXEL)
 		f.BorderSizePixel = 0
-		f.BackgroundColor3 = Color3.new()
+		f.BackgroundColor3 = Color3.new(0,0,0)
 		f.Parent = gui
 		frames[i] = f
 		i += 1
@@ -38,9 +38,10 @@ while true do
 	local ok, res = pcall(HttpService.GetAsync, HttpService, URL, false)
 
 	if ok then
-		local decoded = HttpService:JSONDecode(res)
-		if decoded.ready then
-			for n, rgb in ipairs(decoded.data) do
+		local data = HttpService:JSONDecode(res)
+
+		if data.ready then
+			for n, rgb in ipairs(data.data) do
 				local f = frames[n]
 				if f then
 					f.BackgroundColor3 = Color3.fromRGB(
