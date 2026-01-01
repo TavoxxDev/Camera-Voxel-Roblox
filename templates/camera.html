@@ -5,22 +5,22 @@
 <title>Camera</title>
 <style>
 body {
+  margin:0;
   background:black;
   display:flex;
   justify-content:center;
   align-items:center;
   height:100vh;
-  margin:0;
 }
 video {
   width:480px;
-  height:360px;
+  height:auto;
 }
 </style>
 </head>
 <body>
 
-<video id="v" autoplay playsinline muted></video>
+<video id="v" autoplay muted playsinline></video>
 <canvas id="c" width="96" height="96" hidden></canvas>
 
 <script>
@@ -28,7 +28,7 @@ const v = document.getElementById("v")
 const c = document.getElementById("c")
 const ctx = c.getContext("2d")
 
-navigator.mediaDevices.getUserMedia({video:true})
+navigator.mediaDevices.getUserMedia({ video:true })
 .then(s => {
   v.srcObject = s
   v.play()
@@ -36,14 +36,14 @@ navigator.mediaDevices.getUserMedia({video:true})
 
 setInterval(() => {
   ctx.drawImage(v, 0, 0, 96, 96)
-  const img = c.toDataURL("image/jpeg", 0.6).split(",")[1]
+  const img = c.toDataURL("image/jpeg", 0.45).split(",")[1]
 
   fetch("/camera", {
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body:JSON.stringify({ image: img })
+    method: "POST",
+    headers: { "Content-Type":"application/json" },
+    body: JSON.stringify({ image: img })
   })
-}, 100)
+}, 50)
 </script>
 
 </body>
