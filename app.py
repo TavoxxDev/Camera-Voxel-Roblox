@@ -11,6 +11,7 @@ TIMEOUT = 2.0
 
 last_frame = None
 last_time = 0
+last_smile = False
 
 FALLBACK_IMAGE_URL = "https://raw.githubusercontent.com/SrBolasGrandes/Camera-Voxel-Roblox/refs/heads/main/262%20Sem%20T%C3%ADtulo_20260101105003.png"
 
@@ -27,9 +28,10 @@ def home():
 
 @app.route("/camera", methods=["POST"])
 def camera():
-    global last_frame, last_time
+    global last_frame, last_time, last_smile
 
     mode = request.json.get("mode", "color")
+    smiling = request.json.get("smiling", False)
     raw = base64.b64decode(request.json["image"])
 
     img = Image.open(io.BytesIO(raw)).convert("RGB")
@@ -44,6 +46,7 @@ def camera():
         ]
 
     last_frame = pixels
+    last_smile = smiling
     last_time = time.time()
 
     return jsonify(ok=True)
@@ -61,7 +64,8 @@ def camera_get():
     return jsonify(
         ready=True,
         size=GRID,
-        data=last_frame
+        data=last_frame,
+        smiling=last_smile
     )
 
 if __name__ == "__main__":
