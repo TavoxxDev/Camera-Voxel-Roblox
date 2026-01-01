@@ -17,23 +17,23 @@ def home():
 def camera():
     global last_frame
 
-    img_data = base64.b64decode(request.json["image"])
-    img = Image.open(io.BytesIO(img_data)).convert("RGB")
-    img = img.resize((GRID, GRID))
+    raw = base64.b64decode(request.json["image"])
+    img = Image.open(io.BytesIO(raw)).convert("RGB")
+    img = img.resize((GRID, GRID), Image.BILINEAR)
 
     last_frame = list(img.getdata())
-    return jsonify({"ok": True})
+    return jsonify(ok=True)
 
 @app.route("/cameraGet")
 def camera_get():
     if last_frame is None:
-        return jsonify({"ready": False})
+        return jsonify(ready=False)
 
-    return jsonify({
-        "ready": True,
-        "size": GRID,
-        "data": last_frame
-    })
+    return jsonify(
+        ready=True,
+        size=GRID,
+        data=last_frame
+    )
 
 if __name__ == "__main__":
     app.run()
