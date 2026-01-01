@@ -6,7 +6,7 @@ import base64, io
 app = Flask(__name__)
 CORS(app)
 
-GRID = 64
+GRID = 128
 last_frame = None
 
 @app.route("/")
