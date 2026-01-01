@@ -1,67 +1,29 @@
 <!DOCTYPE html>
 <html>
-<head>
-<meta charset="UTF-8">
-<title>Video Voxel</title>
-
-<style>
-body{
-  margin:0;
-  background:black;
-  color:white;
-  font-family:sans-serif;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  height:100vh;
-}
-#list button{
-  margin:4px;
-  padding:6px 14px;
-}
-video{
-  width:320px;
-  border:2px solid white;
-}
-</style>
-</head>
-<body>
+<body style="background:black;color:white">
 
 <div id="list">Carregando...</div>
-
-<video id="vid" crossorigin="anonymous"></video>
-
-<div>
-  <button onclick="vid.play()">Play</button>
-  <button onclick="vid.pause()">Pause</button>
-</div>
-
+<video id="v" controls></video>
 <canvas id="c" width="96" height="96" hidden></canvas>
 
 <script>
-const vid = document.getElementById("vid")
-const canvas = document.getElementById("c")
-const ctx = canvas.getContext("2d")
-const list = document.getElementById("list")
+const v=document.getElementById("v")
+const c=document.getElementById("c")
+const x=c.getContext("2d")
+const list=document.getElementById("list")
 
-fetch("/videosList")
-.then(r=>r.json())
-.then(videos=>{
+fetch("/videosList").then(r=>r.json()).then(videos=>{
   list.innerHTML=""
-  videos.forEach(v=>{
+  videos.forEach(o=>{
     const b=document.createElement("button")
-    b.innerText=v.name
+    b.innerText=o.name
     b.onclick=()=>{
-      vid.src=v.url
-      vid.play()
-
+      v.src=o.url
+      v.play()
       fetch("/setAudio",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({
-          audio:v.url.replace(".mp4",".mp3")
-        })
+        body:JSON.stringify({audio:o.url.replace(".mp4",".mp3")})
       })
     }
     list.appendChild(b)
@@ -69,17 +31,12 @@ fetch("/videosList")
 })
 
 setInterval(()=>{
-  if(vid.paused||vid.ended||vid.videoWidth===0)return
-  ctx.drawImage(vid,0,0,96,96)
-  fetch("/camera",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      image:canvas.toDataURL("image/jpeg",0.5).split(",")[1]
-    })
+  if(v.paused||v.videoWidth===0)return
+  x.drawImage(v,0,0,96,96)
+  fetch("/camera",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({image:c.toDataURL("image/jpeg",0.5).split(",")[1]})
   })
 },50)
 </script>
-
 </body>
 </html>
