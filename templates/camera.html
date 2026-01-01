@@ -1,67 +1,28 @@
 <!DOCTYPE html>
 <html>
-<head>
-<meta charset="UTF-8">
-<title>Camera Voxel</title>
-
-<style>
-body {
-  margin:0;
-  background:black;
-  color:white;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  height:100vh;
-}
-#view {
-  width:320px;
-  height:320px;
-  border:2px solid white;
-  image-rendering: pixelated;
-}
-button {
-  margin-top:10px;
-}
-</style>
-</head>
-<body>
-
-<canvas id="view" width="96" height="96"></canvas>
-<button id="start">▶ Iniciar câmera</button>
-
-<video id="video" playsinline muted style="opacity:0;position:absolute"></video>
-<canvas id="send" width="96" height="96" hidden></canvas>
+<body style="margin:0;background:black">
+<video id="v" autoplay playsinline></video>
+<canvas id="c" width="96" height="96" hidden></canvas>
 
 <script>
-const video = document.getElementById("video")
-const view = document.getElementById("view")
-const vctx = view.getContext("2d")
-const send = document.getElementById("send")
-const sctx = send.getContext("2d")
+const v = document.getElementById("v")
+const c = document.getElementById("c")
+const x = c.getContext("2d")
 
-document.getElementById("start").onclick = async ()=>{
-  const stream = await navigator.mediaDevices.getUserMedia({ video:true })
-  video.srcObject = stream
-  await video.play()
-}
+navigator.mediaDevices.getUserMedia({video:true})
+.then(s=>v.srcObject=s)
 
 setInterval(()=>{
-  if(video.videoWidth===0) return
-  vctx.drawImage(video,0,0,96,96)
-  sctx.drawImage(video,0,0,96,96)
-
+  if(v.videoWidth===0)return
+  x.drawImage(v,0,0,96,96)
   fetch("/camera",{
     method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({
-      image: send.toDataURL("image/jpeg",0.5).split(",")[1],
-      source: "camera"
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      image:c.toDataURL("image/jpeg",0.5).split(",")[1]
     })
   })
 },50)
 </script>
-
 </body>
 </html>
