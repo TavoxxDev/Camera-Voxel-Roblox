@@ -1,76 +1,94 @@
 from flask import Flask, render_template, request, jsonify
-from PIL import Image
+from flask_cors import CORS
 import cv2
-import os
-import io
+import numpy as np
+import threading
 import time
+import requests
 
 app = Flask(__name__)
+CORS(app)
 
-FRAME = []
-READY = False
+GRID = 96
+FPS = 20
+MODE = "color"
+TIMEOUT = 2
 
-SIZE = 96
-VIDEO_CAP = None
+FALLBACK_URL = "https://raw.githubusercontent.com/SrBolasGrandes/Camera-Voxel-Roblox/refs/heads/main/262%20Sem%20T%C3%ADtulo_20260101105003.png"
 
-def img_to_pixels(img):
-    img = img.resize((SIZE, SIZE)).convert("RGB")
-    data = []
-    for y in range(SIZE):
-        for x in range(SIZE):
-            r,g,b = img.getpixel((x,y))
-            data.append([r,g,b])
-    return data
+frame_data = {
+    "ready": False,
+    "data": []
+}
 
-@app.route("/cameraGet")
-def camera_get():
-    return jsonify({"ready": READY, "data": FRAME})
+last_frame_time = 0
+lock = threading.Lock()
+
+def image_to_pixels(img):
+    img = cv2.resize(img, (GRID, GRID))
+    pixels = []
+    for y in range(GRID):
+        for x in range(GRID):
+            b, g, r = img[y, x]
+            pixels.append([int(r), int(g), int(b)])
+    return pixels
+
+def load_fallback():
+    r = requests.get(FALLBACK_URL)
+    img = np.frombuffer(r.content, np.uint8)
+    img = cv2.imdecode(img, cv2.IMREAD_COLOR)
+    return image_to_pixels(img)
+
+FALLBACK_PIXELS = load_fallback()
+
+def watchdog():
+    global frame_data
+    while True:
+        time.sleep(0.1)
+        with lock:
+            if time.time() - last_frame_time > TIMEOUT:
+                frame_data["data"] = FALLBACK_PIXELS
+                frame_data["ready"] = False
+
+threading.Thread(target=watchdog, daemon=True).start()
+
+def process_frame(frame):
+    frame = cv2.resize(frame, (GRID, GRID))
+    if MODE == "bw":
+        g = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        frame = cv2.cvtColor(g, cv2.COLOR_GRAY2BGR)
+    return image_to_pixels(frame)
 
 @app.route("/camera")
 def camera():
     return render_template("camera.html")
 
-@app.route("/cameraSend", methods=["POST"])
-def camera_send():
-    global FRAME, READY
-    img = Image.open(io.BytesIO(request.data))
-    FRAME = img_to_pixels(img)
-    READY = True
-    return "ok"
-
-@app.route("/foto")
-def foto():
-    return render_template("foto.html")
-
-@app.route("/fotoSend", methods=["POST"])
-def foto_send():
-    global FRAME, READY
-    img = Image.open(request.files["image"].stream)
-    FRAME = img_to_pixels(img)
-    READY = True
-    return "ok"
-
 @app.route("/video")
 def video():
-    files = [f for f in os.listdir("videos") if f.endswith(".mp4")]
-    return render_template("video.html", videos=files)
+    return render_template("video.html")
 
-@app.route("/videoPlay", methods=["POST"])
-def video_play():
-    global VIDEO_CAP
-    VIDEO_CAP = cv2.VideoCapture("videos/" + request.json["name"])
+@app.route("/setMode", methods=["POST"])
+def set_mode():
+    global MODE
+    MODE = request.json["mode"]
+    return jsonify(ok=True)
+
+@app.route("/pushFrame", methods=["POST"])
+def push_frame():
+    global frame_data, last_frame_time
+    img = np.frombuffer(request.data, np.uint8)
+    frame = cv2.imdecode(img, cv2.IMREAD_COLOR)
+    pixels = process_frame(frame)
+    with lock:
+        frame_data["data"] = pixels
+        frame_data["ready"] = True
+        last_frame_time = time.time()
     return "ok"
 
-@app.route("/videoFrame")
-def video_frame():
-    global FRAME, READY, VIDEO_CAP
-    if VIDEO_CAP:
-        ok, frame = VIDEO_CAP.read()
-        if ok:
-            img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-            FRAME = img_to_pixels(img)
-            READY = True
-    return "ok"
+@app.route("/cameraGet")
+def camera_get():
+    with lock:
+        return jsonify(frame_data)
 
 if __name__ == "__main__":
-    app.run()
+    app.run(host="0.0.0.0", port=10000)
