@@ -1,10 +1,6 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, jsonify, request
 from flask_cors import CORS
-import cv2
-import numpy as np
-import threading
-import time
-import requests
+import cv2, threading, time, requests, numpy as np
 
 app = Flask(__name__)
 CORS(app)
@@ -14,24 +10,27 @@ FPS = 20
 MODE = "color"
 TIMEOUT = 2
 
+GITHUB_USER = "SrBolasGrandes"
+GITHUB_REPO = "Camera-Voxel-Roblox"
+VIDEOS_PATH = "videos"
+BRANCH = "main"
+
 FALLBACK_URL = "https://raw.githubusercontent.com/SrBolasGrandes/Camera-Voxel-Roblox/refs/heads/main/262%20Sem%20T%C3%ADtulo_20260101105003.png"
 
-frame_data = {
-    "ready": False,
-    "data": []
-}
-
+frame_data = {"ready": False, "data": []}
 last_frame_time = 0
 lock = threading.Lock()
+video_cap = None
+video_paused = False
 
 def image_to_pixels(img):
     img = cv2.resize(img, (GRID, GRID))
-    pixels = []
+    out = []
     for y in range(GRID):
         for x in range(GRID):
             b, g, r = img[y, x]
-            pixels.append([int(r), int(g), int(b)])
-    return pixels
+            out.append([int(r), int(g), int(b)])
+    return out
 
 def load_fallback():
     r = requests.get(FALLBACK_URL)
@@ -42,7 +41,6 @@ def load_fallback():
 FALLBACK_PIXELS = load_fallback()
 
 def watchdog():
-    global frame_data
     while True:
         time.sleep(0.1)
         with lock:
@@ -53,11 +51,27 @@ def watchdog():
 threading.Thread(target=watchdog, daemon=True).start()
 
 def process_frame(frame):
-    frame = cv2.resize(frame, (GRID, GRID))
     if MODE == "bw":
         g = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         frame = cv2.cvtColor(g, cv2.COLOR_GRAY2BGR)
     return image_to_pixels(frame)
+
+def video_loop():
+    global video_cap, video_paused, last_frame_time
+    while True:
+        time.sleep(1 / FPS)
+        if video_cap and not video_paused:
+            ok, frame = video_cap.read()
+            if not ok:
+                video_cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                continue
+            pixels = process_frame(frame)
+            with lock:
+                frame_data["data"] = pixels
+                frame_data["ready"] = True
+                last_frame_time = time.time()
+
+threading.Thread(target=video_loop, daemon=True).start()
 
 @app.route("/camera")
 def camera():
@@ -67,22 +81,36 @@ def camera():
 def video():
     return render_template("video.html")
 
-@app.route("/setMode", methods=["POST"])
-def set_mode():
-    global MODE
-    MODE = request.json["mode"]
-    return jsonify(ok=True)
+@app.route("/videosList")
+def videos_list():
+    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{VIDEOS_PATH}?ref={BRANCH}"
+    r = requests.get(url).json()
+    videos = []
+    for f in r:
+        if f["name"].lower().endswith((".mp4", ".webm", ".mov", ".avi")):
+            videos.append({
+                "name": f["name"],
+                "url": f["download_url"]
+            })
+    return jsonify(videos)
 
-@app.route("/pushFrame", methods=["POST"])
-def push_frame():
-    global frame_data, last_frame_time
-    img = np.frombuffer(request.data, np.uint8)
-    frame = cv2.imdecode(img, cv2.IMREAD_COLOR)
-    pixels = process_frame(frame)
-    with lock:
-        frame_data["data"] = pixels
-        frame_data["ready"] = True
-        last_frame_time = time.time()
+@app.route("/playVideo", methods=["POST"])
+def play_video():
+    global video_cap, video_paused
+    video_paused = False
+    video_cap = cv2.VideoCapture(request.json["url"])
+    return "ok"
+
+@app.route("/pauseVideo", methods=["POST"])
+def pause_video():
+    global video_paused
+    video_paused = True
+    return "ok"
+
+@app.route("/resumeVideo", methods=["POST"])
+def resume_video():
+    global video_paused
+    video_paused = False
     return "ok"
 
 @app.route("/cameraGet")
