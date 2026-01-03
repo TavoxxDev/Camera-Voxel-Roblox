@@ -1,47 +1,29 @@
 <!DOCTYPE html>
 <html>
-<head>
-<meta charset="utf-8">
-<title>Vídeos</title>
-<style>
-body { background:#111; color:white; font-family:sans-serif }
-button { margin:5px; padding:10px }
-</style>
-</head>
-<body>
-
-<h2>Vídeos disponíveis</h2>
+<body style="background:#111;color:white">
+<h2>Vídeos</h2>
 <div id="list"></div>
 
-<button onclick="pause()">⏸ Pausar</button>
-<button onclick="resume()">▶ Continuar</button>
+<button onclick="pause()">⏸</button>
+<button onclick="resume()">▶</button>
 
 <script>
-fetch("/videosList")
-.then(r => r.json())
-.then(videos => {
-    let div = document.getElementById("list")
-    videos.forEach(v => {
-        let b = document.createElement("button")
-        b.innerText = v.name
-        b.onclick = () => {
-            fetch("/playVideo", {
-                method:"POST",
-                headers:{"Content-Type":"application/json"},
-                body:JSON.stringify({url:v.url})
-            })
-        }
-        div.appendChild(b)
-    })
+fetch("/videosList").then(r=>r.json()).then(vs=>{
+	let l=document.getElementById("list")
+	vs.forEach(v=>{
+		let b=document.createElement("button")
+		b.innerText=v.name
+		b.onclick=()=>fetch("/playVideo",{
+			method:"POST",
+			headers:{"Content-Type":"application/json"},
+			body:JSON.stringify({url:v.url})
+		})
+		l.appendChild(b)
+	})
 })
 
-function pause(){
-    fetch("/pauseVideo",{method:"POST"})
-}
-function resume(){
-    fetch("/resumeVideo",{method:"POST"})
-}
+function pause(){fetch("/pauseVideo",{method:"POST"})}
+function resume(){fetch("/resumeVideo",{method:"POST"})}
 </script>
-
 </body>
 </html>
