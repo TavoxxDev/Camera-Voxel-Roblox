@@ -1,5 +1,4 @@
 flask
-flask-cors
 pillow
+opencv-python-headless
 gunicorn
-requests
