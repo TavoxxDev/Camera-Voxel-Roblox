@@ -1,34 +1,7 @@
 <!DOCTYPE html>
 <html>
-<head>
-<meta charset="UTF-8">
-<title>Camera</title>
-</head>
-<body style="background:black;color:white">
-
-<video id="v" autoplay playsinline></video>
-<canvas id="c" width="96" height="96" hidden></canvas>
-
-<script>
-const v = document.getElementById("v")
-const c = document.getElementById("c")
-const ctx = c.getContext("2d")
-
-navigator.mediaDevices.getUserMedia({video:true}).then(s=>{
-  v.srcObject = s
-})
-
-setInterval(()=>{
-  ctx.drawImage(v,0,0,96,96)
-  fetch("/camera",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      image: c.toDataURL("image/jpeg",0.5).split(",")[1]
-    })
-  })
-},100)
-</script>
-
+<body>
+<video autoplay playsinline></video>
+<script src="/static/camera.js"></script>
 </body>
 </html>
