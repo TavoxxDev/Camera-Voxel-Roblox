@@ -1,36 +1,21 @@
 <!DOCTYPE html>
 <html>
-<body>
-<select id="mode">
-<option value="color">Color</option>
-<option value="bw">Preto e Branco</option>
-</select>
-<video id="video" autoplay playsinline></video>
-<canvas id="canvas" width="96" height="96" style="display:none"></canvas>
-
+<body style="background:black">
+<video id="v" autoplay playsinline></video>
 <script>
-const video = document.getElementById("video")
-const canvas = document.getElementById("canvas")
-const ctx = canvas.getContext("2d")
-
-navigator.mediaDevices.getUserMedia({video:true}).then(s=>{
-    video.srcObject = s
+navigator.mediaDevices.getUserMedia({video:true})
+.then(s=>{
+	v.srcObject=s
+	const c=document.createElement("canvas")
+	const x=c.getContext("2d")
+	setInterval(()=>{
+		c.width=96;c.height=96
+		x.drawImage(v,0,0,96,96)
+		c.toBlob(b=>{
+			fetch("/pushFrame",{method:"POST",body:b})
+		},"image/jpeg")
+	},50)
 })
-
-document.getElementById("mode").onchange = e=>{
-    fetch("/setMode",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({mode:e.target.value})
-    })
-}
-
-setInterval(()=>{
-    ctx.drawImage(video,0,0,96,96)
-    canvas.toBlob(b=>{
-        fetch("/pushFrame",{method:"POST",body:b})
-    },"image/jpeg")
-},50)
 </script>
 </body>
 </html>
