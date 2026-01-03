@@ -1,11 +1,47 @@
 <!DOCTYPE html>
 <html>
+<head>
+<meta charset="utf-8">
+<title>Vídeos</title>
+<style>
+body { background:#111; color:white; font-family:sans-serif }
+button { margin:5px; padding:10px }
+</style>
+</head>
 <body>
-<div id="list">
-{% for v in videos %}
-<button onclick="play('{{v}}')">{{v}}</button><br>
-{% endfor %}
-</div>
-<script src="/static/video.js"></script>
+
+<h2>Vídeos disponíveis</h2>
+<div id="list"></div>
+
+<button onclick="pause()">⏸ Pausar</button>
+<button onclick="resume()">▶ Continuar</button>
+
+<script>
+fetch("/videosList")
+.then(r => r.json())
+.then(videos => {
+    let div = document.getElementById("list")
+    videos.forEach(v => {
+        let b = document.createElement("button")
+        b.innerText = v.name
+        b.onclick = () => {
+            fetch("/playVideo", {
+                method:"POST",
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({url:v.url})
+            })
+        }
+        div.appendChild(b)
+    })
+})
+
+function pause(){
+    fetch("/pauseVideo",{method:"POST"})
+}
+function resume(){
+    fetch("/resumeVideo",{method:"POST"})
+}
+</script>
+
 </body>
 </html>
