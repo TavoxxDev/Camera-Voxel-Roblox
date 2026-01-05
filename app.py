@@ -1,137 +1,87 @@
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-import cv2, threading, time, requests, numpy as np
+from PIL import Image
+import base64, io, time, requests
 
 app = Flask(__name__)
 CORS(app)
 
-GRID = 96
-FPS = 20
-MODE = "color"
-TIMEOUT = 2
+GRID = 64
+FPS_TIMEOUT = 3
+
+last_frame = None
+last_time = 0
+current_audio = None
 
 GITHUB_USER = "SrBolasGrandes"
-GITHUB_REPO = "Camera-Voxel-Roblox"
-VIDEOS_PATH = "videos"
-BRANCH = "main"
+REPO = "Camera-Voxel-Roblox"
+MEDIA_PATH = "videos"
 
-FALLBACK_URL = "https://raw.githubusercontent.com/SrBolasGrandes/Camera-Voxel-Roblox/refs/heads/main/262%20Sem%20T%C3%ADtulo_20260101105003.png"
-
-frame_data = {"data": []}
-last_frame_time = 0
-lock = threading.Lock()
-video_cap = None
-paused = False
-
-def img_to_pixels(img):
-	img = cv2.resize(img, (GRID, GRID))
-	out = []
-	for y in range(GRID):
-		for x in range(GRID):
-			b,g,r = img[y,x]
-			out.append([int(r),int(g),int(b)])
-	return out
+FALLBACK_IMAGE = "https://raw.githubusercontent.com/SrBolasGrandes/Camera-Voxel-Roblox/refs/heads/main/262%20Sem%20T%C3%ADtulo_20260101105003.png"
 
 def load_fallback():
-	r = requests.get(FALLBACK_URL)
-	img = np.frombuffer(r.content, np.uint8)
-	img = cv2.imdecode(img, cv2.IMREAD_COLOR)
-	return img_to_pixels(img)
-
-FALLBACK = load_fallback()
-
-def watchdog():
-	while True:
-		time.sleep(0.2)
-		with lock:
-			if time.time() - last_frame_time > TIMEOUT:
-				frame_data["data"] = FALLBACK
-
-threading.Thread(target=watchdog, daemon=True).start()
-
-def process(frame):
-	global MODE
-	if MODE == "bw":
-		g = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-		frame = cv2.cvtColor(g, cv2.COLOR_GRAY2BGR)
-	return img_to_pixels(frame)
-
-def video_loop():
-	global video_cap, paused, last_frame_time
-	while True:
-		time.sleep(1/FPS)
-		if video_cap and not paused:
-			ok, frame = video_cap.read()
-			if not ok:
-				video_cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-				continue
-			with lock:
-				frame_data["data"] = process(frame)
-				last_frame_time = time.time()
-
-threading.Thread(target=video_loop, daemon=True).start()
+    global last_frame
+    r = requests.get(FALLBACK_IMAGE)
+    img = Image.open(io.BytesIO(r.content)).convert("RGB")
+    img = img.resize((GRID, GRID))
+    last_frame = list(img.getdata())
 
 @app.route("/")
-def index():
-	return "Camera Voxel Server OK"
-
-@app.route("/camera")
-def camera():
-	return render_template("camera.html")
+def camera_page():
+    return render_template("camera.html")
 
 @app.route("/video")
-def video():
-	return render_template("video.html")
-
-@app.route("/pushFrame", methods=["POST"])
-def push():
-	global last_frame_time
-	img = np.frombuffer(request.data, np.uint8)
-	frame = cv2.imdecode(img, cv2.IMREAD_COLOR)
-	with lock:
-		frame_data["data"] = process(frame)
-		last_frame_time = time.time()
-	return "ok"
-
-@app.route("/cameraGet")
-def get():
-	with lock:
-		return jsonify(frame_data)
+def video_page():
+    return render_template("video.html")
 
 @app.route("/videosList")
-def list_videos():
-	url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{VIDEOS_PATH}?ref={BRANCH}"
-	r = requests.get(url).json()
-	out = []
-	for f in r:
-		if f["name"].lower().endswith((".mp4",".webm",".mov",".avi")):
-			out.append({"name":f["name"],"url":f["download_url"]})
-	return jsonify(out)
+def videos_list():
+    url = f"https://api.github.com/repos/{GITHUB_USER}/{REPO}/contents/{MEDIA_PATH}"
+    r = requests.get(url).json()
 
-@app.route("/playVideo", methods=["POST"])
-def play_video():
-	global video_cap, paused
-	video_cap = cv2.VideoCapture(request.json["url"])
-	paused = False
-	return "ok"
+    videos = []
+    for f in r:
+        if f["name"].endswith(".mp4"):
+            videos.append({
+                "name": f["name"],
+                "url": f["download_url"]
+            })
 
-@app.route("/pauseVideo", methods=["POST"])
-def pause():
-	global paused
-	paused = True
-	return "ok"
+    return jsonify(videos)
 
-@app.route("/resumeVideo", methods=["POST"])
-def resume():
-	global paused
-	paused = False
-	return "ok"
+@app.route("/camera", methods=["POST"])
+def camera():
+    global last_frame, last_time
 
-@app.route("/setMode", methods=["POST"])
-def set_mode():
-	global MODE
-	MODE = request.json["mode"]
-	return "ok"
+    raw = base64.b64decode(request.json["image"])
+    img = Image.open(io.BytesIO(raw)).convert("RGB")
+    img = img.resize((GRID, GRID))
+
+    last_frame = list(img.getdata())
+    last_time = time.time()
+
+    return jsonify(ok=True)
+
+@app.route("/cameraGet")
+def camera_get():
+    if last_frame is None or time.time() - last_time > FPS_TIMEOUT:
+        load_fallback()
+
+    return jsonify(
+        ready=True,
+        size=GRID,
+        data=last_frame
+    )
+
+@app.route("/setAudio", methods=["POST"])
+def set_audio():
+    global current_audio
+    current_audio = request.json["audio"]
+    return jsonify(ok=True)
+
+@app.route("/audioGet")
+def audio_get():
+    return jsonify(audio=current_audio)
 
 if __name__ == "__main__":
-	app.run(host="0.0.0.0", port=10000)
+    app.run(host="0.0.0.0", port=10000)
