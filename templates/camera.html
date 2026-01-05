@@ -1,21 +1,47 @@
 <!DOCTYPE html>
 <html>
-<body style="background:black">
+<head>
+<meta charset="UTF-8">
+<title>Camera</title>
+<style>
+body {
+  margin:0;
+  background:black;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  height:100vh;
+}
+video {
+  width:320px;
+  border:2px solid white;
+}
+</style>
+</head>
+<body>
+
 <video id="v" autoplay playsinline></video>
+<canvas id="c" width="64" height="64" hidden></canvas>
+
 <script>
-navigator.mediaDevices.getUserMedia({video:true})
-.then(s=>{
-	v.srcObject=s
-	const c=document.createElement("canvas")
-	const x=c.getContext("2d")
-	setInterval(()=>{
-		c.width=96;c.height=96
-		x.drawImage(v,0,0,96,96)
-		c.toBlob(b=>{
-			fetch("/pushFrame",{method:"POST",body:b})
-		},"image/jpeg")
-	},50)
-})
+const video = document.getElementById("v")
+const canvas = document.getElementById("c")
+const ctx = canvas.getContext("2d")
+
+navigator.mediaDevices.getUserMedia({ video:true })
+.then(stream => video.srcObject = stream)
+
+setInterval(()=>{
+  ctx.drawImage(video,0,0,64,64)
+  fetch("/camera",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({
+      image: canvas.toDataURL("image/jpeg",0.5).split(",")[1]
+    })
+  })
+},50)
 </script>
+
 </body>
 </html>
