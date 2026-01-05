@@ -1,29 +1,80 @@
 <!DOCTYPE html>
 <html>
-<body style="background:#111;color:white">
-<h2>Vídeos</h2>
+<head>
+<meta charset="UTF-8">
+<title>Video</title>
+<style>
+body {
+  background:black;
+  color:white;
+  font-family:sans-serif;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+button {
+  margin:4px;
+  padding:6px 12px;
+}
+video {
+  width:320px;
+  margin-top:10px;
+  border:2px solid white;
+}
+</style>
+</head>
+<body>
+
+<h3>Vídeos</h3>
 <div id="list"></div>
 
-<button onclick="pause()">⏸</button>
-<button onclick="resume()">▶</button>
+<video id="vid" crossorigin="anonymous"></video>
+
+<button onclick="vid.play()">▶ Play</button>
+<button onclick="vid.pause()">⏸ Pause</button>
+
+<canvas id="c" width="64" height="64" hidden></canvas>
 
 <script>
-fetch("/videosList").then(r=>r.json()).then(vs=>{
-	let l=document.getElementById("list")
-	vs.forEach(v=>{
-		let b=document.createElement("button")
-		b.innerText=v.name
-		b.onclick=()=>fetch("/playVideo",{
-			method:"POST",
-			headers:{"Content-Type":"application/json"},
-			body:JSON.stringify({url:v.url})
-		})
-		l.appendChild(b)
-	})
+const list = document.getElementById("list")
+const vid = document.getElementById("vid")
+const canvas = document.getElementById("c")
+const ctx = canvas.getContext("2d")
+
+fetch("/videosList")
+.then(r=>r.json())
+.then(videos=>{
+  videos.forEach(v=>{
+    const b = document.createElement("button")
+    b.innerText = v.name
+    b.onclick = ()=>{
+      vid.src = v.url
+      vid.play()
+
+      fetch("/setAudio",{
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({
+          audio: v.url.replace(".mp4",".mp3")
+        })
+      })
+    }
+    list.appendChild(b)
+  })
 })
 
-function pause(){fetch("/pauseVideo",{method:"POST"})}
-function resume(){fetch("/resumeVideo",{method:"POST"})}
+setInterval(()=>{
+  if (vid.paused || vid.ended) return
+  ctx.drawImage(vid,0,0,64,64)
+  fetch("/camera",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({
+      image: canvas.toDataURL("image/jpeg",0.5).split(",")[1]
+    })
+  })
+},50)
 </script>
+
 </body>
 </html>
