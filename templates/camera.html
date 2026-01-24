@@ -30,6 +30,11 @@ const ctx = canvas.getContext("2d")
 
 navigator.mediaDevices.getUserMedia({ video:true })
 .then(stream => video.srcObject = stream)
+  
+<form action="/foto" method="post" enctype="multipart/form-data">
+  <input type="file" name="image">
+  <button type="submit">Enviar foto</button>
+</form>
 
 setInterval(()=>{
   ctx.drawImage(video,0,0,64,64)
