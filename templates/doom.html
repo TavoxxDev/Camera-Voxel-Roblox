@@ -1,171 +1,153 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<title>Minezin de cria, rsrs</title>
+  <meta charset="utf-8">
+  <title>DOOM + CameraGet</title>
 
-<style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
     body {
-        margin: 0;
-        overflow: hidden;
-        background: #87ceeb;
+      margin: 0;
+      background: #000;
+      color: white;
+      font-family: monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
-    canvas {
-        display: block;
-        image-rendering: pixelated;
-    }
-    #hud {
-        position: fixed;
-        top: 10px;
-        left: 10px;
-        background: rgba(0,0,0,0.6);
-        color: white;
-        font-family: monospace;
-        padding: 8px 12px;
-        border-radius: 6px;
-        font-size: 14px;
-    }
-</style>
 
-<script src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
+    #dosbox {
+      width: 640px;
+      height: 400px;
+      border: 3px solid #900;
+      margin-top: 10px;
+    }
+
+    #cameraBox {
+      margin-top: 10px;
+      border: 3px solid #0f0;
+      width: 256px;
+      height: 256px;
+      image-rendering: pixelated;
+    }
+
+    canvas {
+      image-rendering: pixelated;
+    }
+
+    .hint {
+      margin-top: 6px;
+      font-size: 13px;
+      color: #aaa;
+    }
+  </style>
 </head>
 
 <body>
 
-<div id="hud">
-W / S: andar<br>
-A / D: girar câmera<br>
-(Teclado vindo do Roblox)
-</div>
+  <!-- DOOM -->
+  <div id="dosbox"></div>
 
-<script>
-/* ================= SCENE ================= */
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87ceeb);
+  <!-- CAMERA GET -->
+  <canvas id="cameraBox" width="64" height="64"></canvas>
 
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+  <div class="hint">
+    W/S = andar | A/D = girar câmera<br>
+    Tela verde = cameraGet (Roblox / sistema)
+  </div>
 
-const renderer = new THREE.WebGLRenderer({
-    antialias: false,
-    preserveDrawingBuffer: true
-});
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(1);
-document.body.appendChild(renderer.domElement);
-/* ========================================= */
+  <script src="https://js-dos.com/cdn/js-dos-api.js"></script>
 
-/* ================= LIGHT ================= */
-scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-const sun = new THREE.DirectionalLight(0xffffff, 0.6);
-sun.position.set(10, 20, 10);
-scene.add(sun);
-/* ========================================= */
+  <script>
+    /* ===============================
+       TECLAS (CONTÍNUO)
+    =============================== */
 
-/* ================= WORLD ================= */
-const blockGeo = new THREE.BoxGeometry(1, 1, 1);
-const grassMat = new THREE.MeshLambertMaterial({ color: 0x55aa33 });
-const dirtMat  = new THREE.MeshLambertMaterial({ color: 0x8b5a2b });
+    const pressed = {};
 
-for (let x = -10; x <= 10; x++) {
-    for (let z = -10; z <= 10; z++) {
-        const b = new THREE.Mesh(blockGeo, grassMat);
-        b.position.set(x, 0, z);
-        scene.add(b);
-    }
-}
-
-for (let i = 0; i < 40; i++) {
-    const b = new THREE.Mesh(blockGeo, dirtMat);
-    b.position.set(
-        Math.floor(Math.random()*20-10),
-        1,
-        Math.floor(Math.random()*20-10)
-    );
-    scene.add(b);
-}
-/* ========================================= */
-
-/* ================= PLAYER ================= */
-camera.position.set(0, 1.7, 5);
-let rotY = 0;
-const speed = 0.08;
-const rotSpeed = 0.04;
-/* ========================================= */
-
-/* ================= TECLADO REMOTO ================= */
-let remoteKeys = {};
-
-async function updateKeys() {
-    const r = await fetch("/keyboardGet");
-    const j = await r.json();
-    remoteKeys = j.keys || {};
-}
-/* ========================================= */
-
-/* ================= UPDATE ================= */
-function updatePlayer() {
-    if (remoteKeys["A"]) rotY += rotSpeed;
-    if (remoteKeys["D"]) rotY -= rotSpeed;
-
-    camera.rotation.y = rotY;
-
-    const dx = Math.sin(rotY);
-    const dz = Math.cos(rotY);
-
-    if (remoteKeys["W"]) {
-        camera.position.x += dx * speed;
-        camera.position.z += dz * speed;
-    }
-
-    if (remoteKeys["S"]) {
-        camera.position.x -= dx * speed;
-        camera.position.z -= dz * speed;
-    }
-}
-/* ========================================= */
-
-/* ================= STREAM ================= */
-const sendCanvas = document.createElement("canvas");
-sendCanvas.width = 64;
-sendCanvas.height = 64;
-const sendCtx = sendCanvas.getContext("2d");
-
-let lastSend = 0;
-const SEND_FPS = 10;
-
-function sendFrame(t) {
-    if (t - lastSend < 1000 / SEND_FPS) return;
-
-    sendCtx.drawImage(renderer.domElement, 0, 0, 64, 64);
-    const base64 = sendCanvas.toDataURL("image/jpeg", 0.6).split(",")[1];
-
-    fetch("/camera", {
+    function sendKey(key, state) {
+      fetch("/key", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: base64 })
+        body: JSON.stringify({ key, state })
+      }).catch(() => {});
+    }
+
+    function down(k) {
+      if (pressed[k]) return;
+      pressed[k] = true;
+      sendKey(k, "down");
+    }
+
+    function up(k) {
+      if (!pressed[k]) return;
+      pressed[k] = false;
+      sendKey(k, "up");
+    }
+
+    document.addEventListener("keydown", e => {
+      const k = e.key.toUpperCase();
+      if (["W","A","S","D"].includes(k)) {
+        e.preventDefault();
+        down(k);
+      }
     });
 
-    lastSend = t;
-}
-/* ========================================= */
+    document.addEventListener("keyup", e => {
+      const k = e.key.toUpperCase();
+      if (["W","A","S","D"].includes(k)) {
+        e.preventDefault();
+        up(k);
+      }
+    });
 
-/* ================= LOOP ================= */
-async function loop(t) {
-    await updateKeys();
-    updatePlayer();
-    renderer.render(scene, camera);
-    sendFrame(t);
-    requestAnimationFrame(loop);
-}
-loop();
-/* ========================================= */
+    setInterval(() => {
+      for (let k in pressed) {
+        if (pressed[k]) sendKey(k, "down");
+      }
+    }, 50);
 
-window.addEventListener("resize", () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-});
-</script>
+    /* ===============================
+       CAMERA GET (TELINHA)
+    =============================== */
+
+    const camCanvas = document.getElementById("cameraBox");
+    const camCtx = camCanvas.getContext("2d");
+    const camImg = camCtx.createImageData(64, 64);
+
+    function updateCamera() {
+      fetch("/cameraGet")
+        .then(r => r.json())
+        .then(j => {
+          if (!j.data) return;
+
+          for (let i = 0; i < j.data.length; i++) {
+            const [r, g, b] = j.data[i];
+            camImg.data[i * 4 + 0] = r;
+            camImg.data[i * 4 + 1] = g;
+            camImg.data[i * 4 + 2] = b;
+            camImg.data[i * 4 + 3] = 255;
+          }
+
+          camCtx.putImageData(camImg, 0, 0);
+        })
+        .catch(() => {});
+    }
+
+    setInterval(updateCamera, 100); // 10 FPS
+
+    /* ===============================
+       DOOM
+    =============================== */
+
+    const dosbox = new Dosbox({
+      id: "dosbox",
+      onload: function (dosbox) {
+        dosbox.run("upload/DOOM-@evilution.zip", "./doom");
+      }
+    });
+  </script>
 
 </body>
 </html>
