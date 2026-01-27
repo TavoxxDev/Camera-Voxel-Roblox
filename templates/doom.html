@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Minecraft 3D Fajuto</title>
+<title>Minezin de cria, rsrs</title>
 
 <style>
     body {
@@ -27,7 +27,6 @@
     }
 </style>
 
-<!-- Three.js -->
 <script src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
 </head>
 
@@ -35,7 +34,8 @@
 
 <div id="hud">
 W / S: andar<br>
-A / D: girar câmera
+A / D: girar câmera<br>
+(Teclado vindo do Roblox)
 </div>
 
 <script>
@@ -43,18 +43,12 @@ A / D: girar câmera
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87ceeb);
 
-const camera = new THREE.PerspectiveCamera(
-    75,
-    window.innerWidth / window.innerHeight,
-    0.1,
-    1000
-);
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
 
 const renderer = new THREE.WebGLRenderer({
     antialias: false,
     preserveDrawingBuffer: true
 });
-
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(1);
 document.body.appendChild(renderer.domElement);
@@ -62,77 +56,70 @@ document.body.appendChild(renderer.domElement);
 
 /* ================= LIGHT ================= */
 scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-
 const sun = new THREE.DirectionalLight(0xffffff, 0.6);
 sun.position.set(10, 20, 10);
 scene.add(sun);
 /* ========================================= */
 
-/* ================= MATERIALS ================= */
-const grassMat = new THREE.MeshLambertMaterial({ color: 0x55aa33 });
-const dirtMat  = new THREE.MeshLambertMaterial({ color: 0x8b5a2b });
-/* ============================================ */
-
 /* ================= WORLD ================= */
 const blockGeo = new THREE.BoxGeometry(1, 1, 1);
+const grassMat = new THREE.MeshLambertMaterial({ color: 0x55aa33 });
+const dirtMat  = new THREE.MeshLambertMaterial({ color: 0x8b5a2b });
 
-// chão
 for (let x = -10; x <= 10; x++) {
     for (let z = -10; z <= 10; z++) {
-        const block = new THREE.Mesh(blockGeo, grassMat);
-        block.position.set(x, 0, z);
-        scene.add(block);
+        const b = new THREE.Mesh(blockGeo, grassMat);
+        b.position.set(x, 0, z);
+        scene.add(b);
     }
 }
 
-// blocos aleatórios
 for (let i = 0; i < 40; i++) {
-    const block = new THREE.Mesh(blockGeo, dirtMat);
-    block.position.set(
-        Math.floor(Math.random() * 20 - 10),
+    const b = new THREE.Mesh(blockGeo, dirtMat);
+    b.position.set(
+        Math.floor(Math.random()*20-10),
         1,
-        Math.floor(Math.random() * 20 - 10)
+        Math.floor(Math.random()*20-10)
     );
-    scene.add(block);
+    scene.add(b);
 }
 /* ========================================= */
 
 /* ================= PLAYER ================= */
 camera.position.set(0, 1.7, 5);
-
 let rotY = 0;
 const speed = 0.08;
 const rotSpeed = 0.04;
 /* ========================================= */
 
-/* ================= INPUT ================= */
-const keys = {};
-document.addEventListener("keydown", e => {
-    keys[e.key.toLowerCase()] = true;
-});
-document.addEventListener("keyup", e => {
-    keys[e.key.toLowerCase()] = false;
-});
+/* ================= TECLADO REMOTO ================= */
+let remoteKeys = {};
+
+async function updateKeys() {
+    const r = await fetch("/keyboardGet");
+    const j = await r.json();
+    remoteKeys = j.keys || {};
+}
 /* ========================================= */
 
 /* ================= UPDATE ================= */
 function updatePlayer() {
-    if (keys["a"]) rotY += rotSpeed;
-    if (keys["d"]) rotY -= rotSpeed;
+    if (remoteKeys["A"]) rotY += rotSpeed;
+    if (remoteKeys["D"]) rotY -= rotSpeed;
 
     camera.rotation.y = rotY;
 
-    const dirX = Math.sin(rotY);
-    const dirZ = Math.cos(rotY);
+    const dx = Math.sin(rotY);
+    const dz = Math.cos(rotY);
 
-    if (keys["w"]) {
-        camera.position.x += dirX * speed;
-        camera.position.z += dirZ * speed;
+    if (remoteKeys["W"]) {
+        camera.position.x += dx * speed;
+        camera.position.z += dz * speed;
     }
 
-    if (keys["s"]) {
-        camera.position.x -= dirX * speed;
-        camera.position.z -= dirZ * speed;
+    if (remoteKeys["S"]) {
+        camera.position.x -= dx * speed;
+        camera.position.z -= dz * speed;
     }
 }
 /* ========================================= */
@@ -149,15 +136,8 @@ const SEND_FPS = 10;
 function sendFrame(t) {
     if (t - lastSend < 1000 / SEND_FPS) return;
 
-    sendCtx.drawImage(
-        renderer.domElement,
-        0, 0,
-        64, 64
-    );
-
-    const base64 = sendCanvas
-        .toDataURL("image/jpeg", 0.6)
-        .split(",")[1];
+    sendCtx.drawImage(renderer.domElement, 0, 0, 64, 64);
+    const base64 = sendCanvas.toDataURL("image/jpeg", 0.6).split(",")[1];
 
     fetch("/camera", {
         method: "POST",
@@ -170,23 +150,21 @@ function sendFrame(t) {
 /* ========================================= */
 
 /* ================= LOOP ================= */
-function animate(t) {
+async function loop(t) {
+    await updateKeys();
     updatePlayer();
     renderer.render(scene, camera);
     sendFrame(t);
-    requestAnimationFrame(animate);
+    requestAnimationFrame(loop);
 }
-
-animate();
+loop();
 /* ========================================= */
 
-/* ================= RESIZE ================= */
 window.addEventListener("resize", () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
-/* ========================================= */
 </script>
 
 </body>
