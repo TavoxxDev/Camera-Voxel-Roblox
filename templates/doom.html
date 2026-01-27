@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Teclado Remoto</title>
+
+<style>
+    body {
+        margin: 0;
+        background: #000;
+        color: #0f0;
+        font-family: monospace;
+        overflow: hidden;
+    }
+
+    #status {
+        position: fixed;
+        bottom: 10px;
+        left: 10px;
+        background: rgba(0,0,0,0.7);
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 14px;
+    }
+
+    canvas {
+        image-rendering: pixelated;
+    }
+</style>
+
+<!-- (Opcional) js-dos / doom -->
+<script src="https://js-dos.com/6.22/current/js-dos.js"></script>
+</head>
+
+<body>
+
+<canvas id="screen" width="320" height="200"></canvas>
+
+<div id="status">
+    Teclado remoto ativo<br>
+    <span id="keys">Nenhuma tecla</span>
+</div>
+
+<script>
+/* ================== DOOM (OPCIONAL) ================== */
+const canvas = document.getElementById("screen");
+
+Dos(canvas, {
+    wdosboxUrl: "https://js-dos.com/6.22/current/wdosbox.js"
+}).ready((fs, main) => {
+    fs.extract("https://js-dos.com/cdn/upload/doom.zip").then(() => {
+        main(["-c", "doom"]);
+    });
+});
+/* ==================================================== */
+
+/* ================== TECLADO REMOTO ================== */
+const pressed = {};
+const keysLabel = document.getElementById("keys");
+
+setInterval(async () => {
+    const r = await fetch("/keyboardGet");
+    const j = await r.json();
+
+    const keys = j.keys || {};
+    const activeKeys = [];
+
+    for (const key in keys) {
+        const isDown = keys[key];
+
+        if (isDown) activeKeys.push(key);
+
+        if (isDown && !pressed[key]) {
+            pressed[key] = true;
+            document.dispatchEvent(new KeyboardEvent("keydown", {
+                key: normalizeKey(key),
+                code: key,
+                bubbles: true
+            }));
+        }
+
+        if (!isDown && pressed[key]) {
+            pressed[key] = false;
+            document.dispatchEvent(new KeyboardEvent("keyup", {
+                key: normalizeKey(key),
+                code: key,
+                bubbles: true
+            }));
+        }
+    }
+
+    keysLabel.textContent = activeKeys.length
+        ? activeKeys.join(" + ")
+        : "Nenhuma tecla";
+
+}, 30);
+
+function normalizeKey(key) {
+    const map = {
+        SPACE: " ",
+        ENTER: "Enter",
+        SHIFT: "Shift",
+        CTRL: "Control",
+        ALT: "Alt",
+        ESCAPE: "Escape",
+        TAB: "Tab"
+    };
+    return map[key] || key.toLowerCase();
+}
+/* ==================================================== */
+</script>
+
+</body>
+</html>
