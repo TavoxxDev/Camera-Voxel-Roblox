@@ -12,14 +12,22 @@ body {
   flex-direction:column;
   align-items:center;
 }
+/* Estilo para os botões */
 button {
   margin:4px;
   padding:6px 12px;
+  cursor: pointer;
 }
 video {
   width:320px;
   margin-top:10px;
   border:2px solid white;
+}
+/* Container para os controles ficarem lado a lado */
+.controls {
+  display: flex;
+  flex-direction: row;
+  margin-top: 10px;
 }
 </style>
 </head>
@@ -30,8 +38,11 @@ video {
 
 <video id="vid" crossorigin="anonymous"></video>
 
-<button onclick="vid.play()">▶ Play</button>
-<button onclick="vid.pause()">⏸ Pause</button>
+<div class="controls">
+  <button onclick="vid.pause()">⏸ Pause</button>
+  <button onclick="vid.play()">▶ Play</button>
+  <button id="loopBtn" onclick="toggleLoop()">🔁 Loop: Off</button>
+</div>
 
 <canvas id="c" width="64" height="64" hidden></canvas>
 
@@ -40,6 +51,24 @@ const list = document.getElementById("list")
 const vid = document.getElementById("vid")
 const canvas = document.getElementById("c")
 const ctx = canvas.getContext("2d")
+const loopBtn = document.getElementById("loopBtn")
+
+// Função para ativar/desativar o Loop
+function toggleLoop() {
+  // Inverte o estado do loop (se true vira false, se false vira true)
+  vid.loop = !vid.loop;
+  
+  // Atualiza o texto do botão
+  if (vid.loop) {
+    loopBtn.innerText = "🔁 Loop: On";
+    loopBtn.style.backgroundColor = "#4CAF50"; // (Opcional) Fica verde quando ligado
+    loopBtn.style.color = "white";
+  } else {
+    loopBtn.innerText = "🔁 Loop: Off";
+    loopBtn.style.backgroundColor = ""; // Volta a cor original
+    loopBtn.style.color = "";
+  }
+}
 
 fetch("/videosList")
 .then(r=>r.json())
@@ -50,6 +79,9 @@ fetch("/videosList")
     b.onclick = ()=>{
       vid.src = v.url
       vid.play()
+
+      // Opcional: Se quiser garantir que o loop se mantenha desligado ao trocar de vídeo, descomente a linha abaixo:
+      // vid.loop = false; updateLoopButtonUI();
 
       fetch("/setAudio",{
         method:"POST",
