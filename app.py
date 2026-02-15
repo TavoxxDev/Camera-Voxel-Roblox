@@ -6,7 +6,6 @@ import base64, io, time, requests
 app = Flask(__name__)
 CORS(app)
 
-# ================= CONFIG =================
 GRID = 64
 FPS_TIMEOUT = 3
 
@@ -15,26 +14,20 @@ REPO = "Camera-Voxel-Roblox"
 MEDIA_PATH = "videos"
 
 FALLBACK_IMAGE = "https://raw.githubusercontent.com/SrBolasGrandes/Camera-Voxel-Roblox/refs/heads/main/262%20Sem%20T%C3%ADtulo_20260101105003.png"
-# ==========================================
 
 last_frame = None
 last_time = 0
 current_audio = None
 
-# ======= TECLADO VIRTUAL =======
-keys_state = {}   # ex: {"W": true, "A": false}
-# ===============================
+keys_state = {} 
 
-# ================= UTIL ===================
 def load_fallback():
     global last_frame
     r = requests.get(FALLBACK_IMAGE)
     img = Image.open(io.BytesIO(r.content)).convert("RGB")
     img = img.resize((GRID, GRID))
     last_frame = list(img.getdata())
-# ==========================================
 
-# ================= PAGES ===================
 @app.route("/")
 def camera_page():
     return render_template("camera.html")
@@ -46,9 +39,7 @@ def video_page():
 @app.route("/doom")
 def doom_page():
     return render_template("doom.html")
-# ==========================================
 
-# ================= VIDEO LIST ==============
 @app.route("/videosList")
 def videos_list():
     url = f"https://api.github.com/repos/{GITHUB_USER}/{REPO}/contents/{MEDIA_PATH}"
@@ -62,9 +53,7 @@ def videos_list():
                 "url": f["download_url"]
             })
     return jsonify(videos)
-# ==========================================
 
-# ================= CAMERA ==================
 @app.route("/camera", methods=["POST"])
 def camera():
     global last_frame, last_time
@@ -101,9 +90,7 @@ def camera_get():
         size=GRID,
         data=last_frame
     )
-# ==========================================
 
-# ================= AUDIO ===================
 @app.route("/setAudio", methods=["POST"])
 def set_audio():
     global current_audio
@@ -113,9 +100,7 @@ def set_audio():
 @app.route("/audioGet")
 def audio_get():
     return jsonify(audio=current_audio)
-# ==========================================
 
-# ================= TECLADO =================
 @app.route("/keyDown", methods=["POST"])
 def key_down():
     key = request.json.get("key")
@@ -137,7 +122,6 @@ def key_up():
 @app.route("/keyboardGet")
 def keyboard_get():
     return jsonify(keys=keys_state)
-# ==========================================
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
