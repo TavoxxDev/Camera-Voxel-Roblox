@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Camera</title>
+<title>Camera & Foto</title>
 <style>
 body {
   margin: 0;
@@ -13,15 +13,22 @@ body {
   justify-content: center;
   height: 100vh;
   gap: 12px;
+  color: white;
+  font-family: sans-serif;
 }
 
-video {
+video, #preview {
   width: 320px;
   border: 2px solid white;
 }
 
+/* Escondemos o preview da foto por padrão */
+#preview { display: none; }
+
 form {
   margin-top: 10px;
+  display: flex;
+  gap: 5px;
 }
 
 input, button {
@@ -29,6 +36,12 @@ input, button {
   color: white;
   border: 1px solid white;
   padding: 6px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: white;
+  color: black;
 }
 </style>
 </head>
@@ -36,27 +49,44 @@ input, button {
 <body>
 
 <video id="v" autoplay playsinline></video>
+<img id="preview" alt="Foto Upada">
+
 <canvas id="c" width="64" height="64" hidden></canvas>
 
-<!-- 🔥 UPLOAD DE FOTO -->
-<form id="fotoForm" enctype="multipart/form-data">
-  <input type="file" name="image" accept="image/*">
+<form id="fotoForm">
+  <input type="file" id="fileInput" accept="image/*">
   <button type="submit">Enviar foto</button>
+  <button type="button" id="btnCamera">Camera</button>
 </form>
 
 <script>
 const video = document.getElementById("v")
 const canvas = document.getElementById("c")
 const ctx = canvas.getContext("2d")
+const fileInput = document.getElementById("fileInput")
+const preview = document.getElementById("preview")
+const btnCamera = document.getElementById("btnCamera")
 
-// CAMERA
+let modoFoto = false; // Controle de estado
+let imagemEstatica = new Image();
+
+// CONFIGURAÇÃO DA CÂMERA
 navigator.mediaDevices.getUserMedia({ video:true })
 .then(stream => video.srcObject = stream)
 
-// ENVIO CONTÍNUO DA CÂMERA
+// LOOP DE ENVIO CONSTANTE (50ms)
 setInterval(()=>{
-  ctx.drawImage(video, 0, 0, 64, 64)
+  if (modoFoto) {
+    // Se estiver no modo foto, desenha a imagem carregada no canvas
+    if (imagemEstatica.src) {
+      ctx.drawImage(imagemEstatica, 0, 0, 64, 64)
+    }
+  } else {
+    // Caso contrário, desenha o frame do vídeo
+    ctx.drawImage(video, 0, 0, 64, 64)
+  }
 
+  // Envia para o servidor (seja frame de vídeo ou a foto)
   fetch("/camera", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -66,16 +96,32 @@ setInterval(()=>{
   })
 }, 50)
 
-// UPLOAD DE FOTO
+// AÇÃO DE UPAR A FOTO
 document.getElementById("fotoForm").addEventListener("submit", e => {
   e.preventDefault()
+  
+  const file = fileInput.files[0]
+  if (!file) return;
 
-  const formData = new FormData(e.target)
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    imagemEstatica.src = event.target.result;
+    preview.src = event.target.result;
+    
+    // Alterna a interface
+    modoFoto = true;
+    video.style.display = "none";
+    preview.style.display = "block";
+  }
+  reader.readAsDataURL(file);
+})
 
-  fetch("/foto", {
-    method: "POST",
-    body: formData
-  })
+// AÇÃO DE VOLTAR PARA A CÂMERA (CANCELAR FOTO)
+btnCamera.addEventListener("click", () => {
+  modoFoto = false;
+  video.style.display = "block";
+  preview.style.display = "none";
+  fileInput.value = ""; // Limpa o campo de arquivo
 })
 </script>
 
