@@ -3,4 +3,3 @@ flask-cors
 pillow
 requests
 gunicorn
-opencv-python
