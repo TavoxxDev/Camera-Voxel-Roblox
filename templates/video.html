@@ -12,7 +12,6 @@ body {
   flex-direction:column;
   align-items:center;
 }
-/* Estilo para os botões */
 button {
   margin:4px;
   padding:6px 12px;
@@ -23,17 +22,32 @@ video {
   margin-top:10px;
   border:2px solid white;
 }
-/* Container para os controles ficarem lado a lado */
 .controls {
   display: flex;
   flex-direction: row;
   margin-top: 10px;
+}
+.urlBox {
+  display: flex;
+  flex-direction: row;
+  margin-top: 10px;
+  gap: 4px;
+}
+.urlBox input {
+  width: 260px;
+  padding: 6px;
 }
 </style>
 </head>
 <body>
 
 <h3>Vídeos</h3>
+
+<div class="urlBox">
+  <input type="text" id="urlInput" placeholder="Cole o link do .mp4 aqui...">
+  <button onclick="loadFromUrl()">Carregar</button>
+</div>
+
 <div id="list"></div>
 
 <video id="vid" crossorigin="anonymous"></video>
@@ -52,20 +66,39 @@ const vid = document.getElementById("vid")
 const canvas = document.getElementById("c")
 const ctx = canvas.getContext("2d")
 const loopBtn = document.getElementById("loopBtn")
+const urlInput = document.getElementById("urlInput")
 
-// Função para ativar/desativar o Loop
+function loadFromUrl() {
+  const url = urlInput.value.trim()
+  if (!url) return
+
+  vid.src = url
+  vid.play()
+
+  fetch("/setAudio",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({
+      audio: url.replace(".mp4",".mp3")
+    })
+  })
+}
+
+// Permite carregar apertando Enter no campo de texto
+urlInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") loadFromUrl()
+})
+
 function toggleLoop() {
-  // Inverte o estado do loop (se true vira false, se false vira true)
   vid.loop = !vid.loop;
-  
-  // Atualiza o texto do botão
+
   if (vid.loop) {
     loopBtn.innerText = "🔁 Loop: On";
-    loopBtn.style.backgroundColor = "#4CAF50"; // (Opcional) Fica verde quando ligado
+    loopBtn.style.backgroundColor = "#4CAF50";
     loopBtn.style.color = "white";
   } else {
     loopBtn.innerText = "🔁 Loop: Off";
-    loopBtn.style.backgroundColor = ""; // Volta a cor original
+    loopBtn.style.backgroundColor = "";
     loopBtn.style.color = "";
   }
 }
@@ -79,9 +112,6 @@ fetch("/videosList")
     b.onclick = ()=>{
       vid.src = v.url
       vid.play()
-
-      // Opcional: Se quiser garantir que o loop se mantenha desligado ao trocar de vídeo, descomente a linha abaixo:
-      // vid.loop = false; updateLoopButtonUI();
 
       fetch("/setAudio",{
         method:"POST",
